@@ -7,22 +7,16 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-get_filename_component(LL_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}" ABSOLUTE)
-
-set(PRELOADER_ANDROID_ROOT
-    "${LL_REPO_ROOT}/app/src/main/cpp/preloader"
-    CACHE PATH "Path to LeviLaunchroid preloader-android"
-)
-
-if(NOT EXISTS "${PRELOADER_ANDROID_ROOT}/include/pl/Config.hpp")
-    message(FATAL_ERROR
-        "Cannot find LeviLaunchroid preloader-android SDK. "
-        "Check PRELOADER_ANDROID_ROOT."
-    )
-endif()
-
 include(FetchContent)
 
+# LeviLaunchroid Android SDK
+FetchContent_Declare(
+    preloader_android
+    GIT_REPOSITORY https://github.com/LiteLDev/preloader-android.git
+    GIT_TAG 0.2.2
+)
+
+# Other dependencies
 FetchContent_Declare(
     nlohmann_json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
@@ -52,6 +46,7 @@ set(FMT_TEST OFF CACHE BOOL "" FORCE)
 set(FMT_INSTALL OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(
+    preloader_android
     nlohmann_json
     boost_pfr
     magic_enum
@@ -61,10 +56,10 @@ FetchContent_MakeAvailable(
 function(configure_mod target)
     target_include_directories(${target} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
-        "${PRELOADER_ANDROID_ROOT}/include"
     )
 
     target_link_libraries(${target} PRIVATE
+        preloader
         nlohmann_json::nlohmann_json
         Boost::pfr
         magic_enum::magic_enum
@@ -89,12 +84,6 @@ if(NOT ANDROID)
 endif()
 
 if(ANDROID)
-    if(NOT EXISTS "${PRELOADER_ANDROID_ROOT}/CMakeLists.txt")
-        message(FATAL_ERROR "Preloader Android CMakeLists.txt not found.")
-    endif()
-
-    add_subdirectory("${PRELOADER_ANDROID_ROOT}" preloader_android)
-
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY
         "${CMAKE_BINARY_DIR}/out/${ANDROID_ABI}"
     )
@@ -109,10 +98,4 @@ if(ANDROID)
     )
 
     configure_mod(cpvp_autototem)
-
-    if(TARGET preloader)
-        target_link_libraries(cpvp_autototem PRIVATE preloader)
-    else()
-        message(FATAL_ERROR "Preloader target not found.")
-    endif()
 endif()
